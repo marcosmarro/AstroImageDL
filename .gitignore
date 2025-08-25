@@ -1,0 +1,8 @@
+*.pth
+__pycache__
+*.pdf
+*.npy
+.DS_Store
+
+DenoisedScience/*
+!DenoisedScience/standard*
