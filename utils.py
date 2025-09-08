@@ -1,35 +1,37 @@
+import h5py
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional
+from astropy.modeling import fitting
+from astropy.modeling.models import Gaussian2D
 from photutils.aperture import CircularAnnulus, CircularAperture, aperture_photometry
+torch.manual_seed(32)
 
-
-def random_crop(data: np.ndarray, num_patches: int, patch_size: Optional[int] = 128) -> np.ndarray:
+def random_crop(data: np.ndarray, position: list, batchsize: int, patch_size: int) -> np.ndarray:
     """Crop a random patch from [B, C, H, W] image.
     
     Args:
         data: 4D array of data with shape [B, C, H, W].
-        num_patches: number of patches to crop from image.
+        position: list of tuples that indicate where the lower left of crop will begin (x, y).
+        batchsize: number of patches to crop from image.
         patch_size: size of patch, in pixels, to be cropped from image H & W.
-            - default = 128
-    
+        
     Returns:
         patches: 4D array of cropped patch(es) with shape [B, C, patch_size, patch_size].
     """
-    B, C, H, W = data.shape
     patches = []
-
-    for _ in range(num_patches):
-        i = torch.randint(0, H - patch_size + 1, (1,))      # -patchsize ensures the patch won't be outside image limits
-        j = torch.randint(0, W - patch_size + 1, (1,))
-        patches.append(data[:, :, i:i+patch_size, j:j+patch_size])
+ 
+    for i in range(batchsize):
+        x = position[i][0]
+        y = position[i][1]
+        patches.append(data[:, :, x:x+patch_size, y:y+patch_size])
 
     patches = torch.cat(patches)
+
     return patches
 
 
-def apply_n2v_mask(data: np.ndarray, mask_fraction: Optional[int] = 0.01) -> tuple[np.ndarray, np.ndarray]:
+def apply_n2v_mask(data: np.ndarray, mask_fraction: int = 0.01) -> tuple[np.ndarray, np.ndarray]:
     """Randomly mask a fraction of pixels in data.
 
     Args:
@@ -56,7 +58,8 @@ def do_aperture_photometry(
     position: tuple[int, int],
     radius: int,
     sky_radius_in: int,
-    sky_annulus_width: int
+    sky_annulus_width: int,
+    RON: int = 17.26,
 ) -> tuple:
     """Performs aperture photometry and returns a tuple of values needed to calculate SNR/CNR.
 
@@ -66,6 +69,7 @@ def do_aperture_photometry(
         radius: aperture radius in pixels.
         sky_radius_in: pixel radius at which to measure the sky background.
         sky_annulus_width: pixel width of the annulus.
+        RON: Read-out noise that was calculated prior to denoising.
 
     Returns:
         A tuple[SNR, CNR] containing:
@@ -83,49 +87,80 @@ def do_aperture_photometry(
     raw_background = aperture_photometry(data, annulus)['aperture_sum'][0]
 
     # Grabs the background's mean in the annulus and multiplies it by aperture's area to grab background in only annulus
-    noise = (raw_background / annulus.area).item()
-    noise_std  = data[x - 10: x + 10, y - 100: y - 50].flatten()
-    noise_std  = np.std(noise_std)
+    mean_noise = (raw_background / annulus.area).item()
+    noise      = data[x - 10: x + 10, y - 100: y - 50].flatten()
+    noise_std  = np.std(noise)
 
     # Background count in the aperture
-    background = noise * aperture.area
+    background = mean_noise * aperture.area
 
     # Calculates total flux
     signal = raw_flux - background
 
-    # Read-out noise that was calculated prior to denoising
-    RON = 17.26    
-
-    cnr = (signal - noise) / noise_std
+    # Calculates CNR and SNR
+    cnr = (signal - mean_noise) / noise_std
     snr = signal / np.sqrt(signal + aperture.area * RON ** 2)
 
-    return snr, cnr 
+    ### Calculating FWHM
+    sub    = data[y-radius:y+radius+1, x-radius:x+radius+1]
+    yy, xx = np.mgrid[0:sub.shape[0], 0:sub.shape[1]]
+    
+    # Initial guess based on moments
+    amp_guess   = sub.max()
+    xo, yo      = radius, radius
+    sigma_guess = radius / 2
 
+    # Fitting data to a 2D Gaussian
+    p_init = Gaussian2D(amplitude=amp_guess, x_mean=xo, y_mean=yo,
+                        x_stddev=sigma_guess, y_stddev=sigma_guess)
+    fit = fitting.LevMarLSQFitter()
+    p = fit(p_init, xx, yy, sub)
+
+    # Calculating mean FWHM from FWHMx and FWHMy
+    fwhm_x = 2.355 * np.abs(p.x_stddev.value)
+    fwhm_y = 2.355 * np.abs(p.y_stddev.value)
+
+    fwhm = (fwhm_x + fwhm_y) / 2
+
+    return snr, cnr, fwhm
 
 
 def plot_comparisons(models: list):
-    """Plots SNR and CNR for different models.
+    """Plots SNR, CNR, and FWHM for different models.
 
     Args:
         models: list of strings of models wished to be plot
-            - example: ['n2v', 'standard']
+            - example: ['original', 'n2v', 'n2n', 'standard']
     """
     # Create SNR figure
     fig_snr, ax_snr = plt.subplots()
-    ax_snr.set_title("SNR")
     ax_snr.grid(True)
 
     # Create CNR figure
     fig_cnr, ax_cnr = plt.subplots()
-    ax_cnr.set_title("CNR")
     ax_cnr.grid(True)
 
-    for model in models:
-        model_snr = np.load(f'Plotting/{model}_snr.npy')
-        model_cnr = np.load(f'Plotting/{model}_cnr.npy')
+    fig_fwhm, ax_fwhm = plt.subplots()
+    ax_fwhm.grid(True)
 
+    for model in models:
+        file = h5py.File(f'Plotting/{model}_data.h5', 'r')
+
+        model_snr  = file['snr'][:]
+        model_cnr  = file['cnr'][:]
+        model_fwhm = file['fwhm'][:]
+     
         ax_snr.plot(model_snr, label=model)
+        ax_snr.set_xlabel('File number')
+        ax_snr.set_ylabel('SNR')
+
         ax_cnr.plot(model_cnr, label=model)
+        ax_cnr.set_xlabel('File number')
+        ax_cnr.set_ylabel('CNR')
+
+        ax_fwhm.plot(model_fwhm, label=model)
+        ax_fwhm.set_xlabel('File number')
+        ax_fwhm.set_ylabel('FWHM')
 
     # Add legends and save after all models are plotted
     ax_snr.legend()
@@ -135,3 +170,59 @@ def plot_comparisons(models: list):
     ax_cnr.legend()
     fig_cnr.savefig("Plotting/CNR.pdf", dpi=300)
     plt.close(fig_cnr)
+
+    ax_fwhm.legend()
+    fig_fwhm.savefig("Plotting/FWHM.pdf", dpi=300)
+    plt.close(fig_fwhm)
+
+
+def plot_cross_correlation(models: list):
+    """Plots SNR, CNR, and FWHM for different models.
+
+    Args:
+        models: list of strings of models wished to be plot
+            - example: ['original', 'n2v', 'n2n', 'standard']
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(10, 10))  # 2x2 grid
+    axes = axes.ravel()
+
+    for i, model in enumerate(models):  # loop over 4 plots
+        file = h5py.File(f'Plotting/{model}_data.h5', 'r')
+
+        cross_corr = file['cross_correlation'][:]
+        
+        N = cross_corr.shape[0] // 2
+        lags = np.arange(-N+1, N)
+
+        im = axes[i].imshow(
+            cross_corr, cmap='viridis', origin='lower',
+            extent=[lags[0], lags[-1], lags[0], lags[-1]]
+        )
+        axes[i].set_title(f'{model} cross correlation')
+        axes[i].set_xlabel('Lag X')
+        axes[i].set_ylabel('Lag Y')
+        fig.colorbar(im, ax=axes[i], fraction=0.046, pad=0.04)
+
+    plt.tight_layout()
+    plt.savefig('Plotting/cross_correlation.pdf', dpi=300)
+    plt.close()
+
+
+def plot_sample(input: torch.Tensor, output: torch.Tensor):
+    """Plots a denoising sample in current directory.
+
+    Args:
+        input: input sequence
+        output: model's output sequence
+    """
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    axs[0].imshow(input[0, 0].detach().cpu().numpy(), cmap="gray")
+    axs[0].set_title("Noisy Input")
+    axs[0].axis("off")
+
+    axs[1].imshow(output[0, 0].detach().cpu().numpy(), cmap="gray")
+    axs[1].set_title("Denoised Output")
+    axs[1].axis("off")
+
+    plt.savefig('denoise_sample.pdf', dpi=300)
+    plt.close()

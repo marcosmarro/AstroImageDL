@@ -35,7 +35,7 @@ class DoubleConv(nn.Module):
 
 class UNetN2V(nn.Module):
     def __init__(self, in_ch=1, in_features=96, out_ch=1, depth=2):
-        """UNet neural network from arXiv:1505.04597"""
+        """UNet neural network from arXiv:1811.10980, inspired from arXiv:1505.04597"""
         super().__init__()
         
         self.down = nn.ModuleList()
@@ -87,7 +87,7 @@ class UNetN2V(nn.Module):
 
 class UNetN2N(nn.Module):
     def __init__(self, in_ch=1, in_features=48, out_ch=1, depth=3):
-        """UNet neural network from arXiv:1505.04597"""
+        """UNet neural network from arXiv:1803.04189, inspired from arXiv:1505.04597."""
         super().__init__()
         
         self.down = nn.ModuleList()
@@ -110,7 +110,7 @@ class UNetN2N(nn.Module):
         for i in range(depth - 1):
             if i==0:
                 self.up.append(nn.Sequential(
-                nn.ConvTranspose2d(in_channels=curr_ch, out_channels=curr_ch, kernel_size=2, stride=2),
+                nn.Upsample(scale_factor=2),
                 DoubleConv(features, features)
                 ))
 
@@ -119,11 +119,11 @@ class UNetN2N(nn.Module):
                 
             else:
                 self.up.append(nn.Sequential(
-                    nn.ConvTranspose2d(in_channels=curr_ch, out_channels=curr_ch, kernel_size=2, stride=2),
+                    nn.Upsample(scale_factor=2),
                     DoubleConv(features, curr_ch)
                 ))
 
-        self.finalup = nn.ConvTranspose2d(in_channels=curr_ch, out_channels=curr_ch, kernel_size=2, stride=2)
+        self.finalup = nn.Upsample(scale_factor=2)
 
         features = curr_ch + 1
 
@@ -135,9 +135,9 @@ class UNetN2N(nn.Module):
     def forward(self, x):
         
         skip = [x]
-
+        
         for down in self.down:
-            x = down(x)
+            x = down(x)          
             skip.append(x)
             x = F.max_pool2d(x, 2)
         
@@ -145,7 +145,7 @@ class UNetN2N(nn.Module):
         skip = skip[::-1]
         
         for idx, upblock in enumerate(self.up):
-            x = upblock[0](x)   # upsample
+            x = upblock[0](x)   # upsample    
             x = torch.cat((x, skip[idx]), dim=1)
             x = upblock[1](x)   # convolution
       

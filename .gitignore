@@ -6,3 +6,6 @@ __pycache__
 
 DenoisedScience/*
 !DenoisedScience/standard*
+
+Plotting/n2n_data.h5
+Plotting/n2v_data.h5
