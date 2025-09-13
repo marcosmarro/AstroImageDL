@@ -77,11 +77,12 @@ FITSdenoising_ML/
 
 3. **Create Virtual Environment** (recommended)
    ```bash
-   python -m venv venv
+   python -m venv venv          # Mac/Linux
+   source venv/bin/activate
    ```
    ```bash
-   source venv/bin/activate     # Mac/Linux
-   venv\Scripts\activate        # Windows
+   python -m venv venv          # Windows
+   venv\Scripts\activate       
    ```
 
 4. **Install Dependencies**
