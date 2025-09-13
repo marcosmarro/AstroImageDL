@@ -27,7 +27,7 @@ Both methods excel with astronomical data where traditional supervised learning 
 Want to test immediately? Sample calibrated and original data are already included in the `Plotting/` directory for your convenience.
 
 ```bash
-git clone https://github.com/your-username/FITSdenoising_ML.git
+git clone https://github.com/marcosmarro/FITSdenoising_ML.git
 cd FITSdenoising_ML
 pip install -r requirements.txt
 python run_all.py
@@ -66,7 +66,7 @@ FITSdenoising_ML/
 
 1. **Clone and Navigate**
    ```bash
-   git clone https://github.com/your-username/FITSdenoising_ML.git
+   git clone https://github.com/marcosmarro/FITSdenoising_ML.git
    cd FITSdenoising_ML
    ```
 
