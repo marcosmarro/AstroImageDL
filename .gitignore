@@ -4,8 +4,9 @@ __pycache__
 *.npy
 .DS_Store
 
-DenoisedScience/*
-!DenoisedScience/standard*
+DenoisedScience/n2v*
+DenoisedScience/n2n*
+!DenoisedScience
 
 Plotting/n2n_data.h5
 Plotting/n2v_data.h5
