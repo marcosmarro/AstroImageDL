@@ -59,8 +59,9 @@ FITSdenoising_ML/
 
 ## Prerequisites
 
-- **Python**: 3.9 or higher (PyTorch Requirments)
+- **Python**: 3.9 or higher (PyTorch Requirements)
 - **GPU**: CUDA-compatible GPU recommended (CPU training possible but slower, ~10 minutes for M1 MacBook)
+- **Storage**: At least 2 GB of disk space
 
 ## Installation & Setup
 
@@ -96,8 +97,8 @@ FITSdenoising_ML/
    ```
 
 6. **Check Results**
-    - Denoised images will be stored in `DenoisedScience/`  
-    - Evaluation metrics will be displayed in the terminal and/or saved as files.  
+    - Denoised FITS images will be stored in `DenoisedScience/`  
+    - Evaluation metric plots will be displayed in the `Plotting/`
 
 ---
 
@@ -110,8 +111,8 @@ python run_all.py
 Executes training → inference → evaluation in sequence.
 
 ### Individual Steps
-The argument "-d" specifies directory where files live
-The argument "-m" specifies model to use
+The argument "-d" specifies directory where files live.
+The argument "-m" specifies model to use.
 ```bash
 # Train models only
 python train.py -d Training -m n2v/n2n
