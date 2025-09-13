@@ -75,9 +75,11 @@ FITSdenoising_ML/
    git pull origin main
    ```
 
-3. **Create Virtual Environment** (optional but recommended)
+3. **Create Virtual Environment** (recommended)
    ```bash
    python -m venv venv
+   ```
+   ```bash
    source venv/bin/activate     # Mac/Linux
    venv\Scripts\activate        # Windows
    ```
