@@ -1,4 +1,4 @@
-# Machine Learning FITS Image Denoising
+# Deep Learning Astronomy Image Denoising
 
 A self-supervised deep learning pipeline for denoising astronomical images in FITS format. This tool implements two denoising methods designed for situations where clean reference images are unavailable, a common challenge in astrophotography.
 
