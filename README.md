@@ -27,8 +27,8 @@ Both methods excel with astronomical data where traditional supervised learning 
 Want to test immediately? Sample calibrated and original data are already included in the `Plotting/` directory for your convenience.
 
 ```bash
-git clone https://github.com/marcosmarro/FITSdenoising_ML.git
-cd FITSdenoising_ML
+git clone https://github.com/marcosmarro/AstroImageDL.git
+cd AstroImageDL
 pip install -r requirements.txt
 python run_all.py
 ```
@@ -40,7 +40,7 @@ Your denoised results will appear in `DenoisedScience/` and evaluation plots in 
 ## Project Structure
 
 ```
-FITSdenoising_ML/
+AstroImageDL/
 ├── train.py               # Model training script
 ├── inference.py           # Denoise science images
 ├── evaluation.py          # Performance metrics and analysis
@@ -67,8 +67,8 @@ FITSdenoising_ML/
 
 1. **Clone and Navigate**
    ```bash
-   git clone https://github.com/marcosmarro/FITSdenoising_ML.git
-   cd FITSdenoising_ML
+   git clone https://github.com/marcosmarro/AstroImageDL.git
+   cd AstroImageDL
    ```
 
 2. **Update Repository** (if previously cloned)
@@ -112,7 +112,7 @@ Executes training → inference → evaluation in sequence.
 
 ### Individual Steps
 The argument "-d" specifies directory where files live.
-The argument "-m" specifies model to use.
+The argument "-m" specifies model to use. User must choose from `[n2v/n2n]`.
 ```bash
 # Train models only
 python train.py -d Training -m n2v/n2n
